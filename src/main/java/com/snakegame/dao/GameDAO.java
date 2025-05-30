@@ -38,7 +38,6 @@ public class GameDAO {
 
         Connection conn = null;
         PreparedStatement stmt = null;
-        ResultSet generatedKeys = null;
 
         try {
             // Test connection first
@@ -67,7 +66,7 @@ public class GameDAO {
                 System.out.println("User validation successful");
             }
 
-            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            stmt = conn.prepareStatement(sql);
             System.out.println("PreparedStatement created successfully");
 
             // Bind parameters with detailed logging
@@ -101,15 +100,17 @@ public class GameDAO {
                 return -1;
             }
 
-            // Get the generated key
-            generatedKeys = stmt.getGeneratedKeys();
-            if (generatedKeys.next()) {
-                int gameId = generatedKeys.getInt(1);
-                System.out.println("SUCCESS: Generated game ID: " + gameId);
-                return gameId;
-            } else {
-                System.err.println("ERROR: No ID was generated");
-                return -1;
+            // Instead of getGeneratedKeys(), use SQLite's last_insert_rowid() function
+            try (PreparedStatement lastIdStmt = conn.prepareStatement("SELECT last_insert_rowid()")) {
+                ResultSet rs = lastIdStmt.executeQuery();
+                if (rs.next()) {
+                    int gameId = rs.getInt(1);
+                    System.out.println("SUCCESS: Generated game ID: " + gameId);
+                    return gameId;
+                } else {
+                    System.err.println("ERROR: Could not retrieve generated ID");
+                    return -1;
+                }
             }
 
         } catch (SQLException e) {
@@ -129,7 +130,6 @@ public class GameDAO {
         } finally {
             // Clean up resources
             try {
-                if (generatedKeys != null) generatedKeys.close();
                 if (stmt != null) stmt.close();
                 if (conn != null) conn.close();
                 System.out.println("Database resources cleaned up");
