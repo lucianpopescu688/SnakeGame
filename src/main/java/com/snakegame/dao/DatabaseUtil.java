@@ -42,8 +42,7 @@ public class DatabaseUtil {
                     user_id INTEGER NOT NULL,
                     score INTEGER DEFAULT 0,
                     time_spent INTEGER DEFAULT 0,
-                    game_
-                    state TEXT,
+                    game_state TEXT,
                     obstacles TEXT,
                     started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     ended_at DATETIME,
@@ -76,6 +75,8 @@ public class DatabaseUtil {
             """;
             stmt.execute(insertSampleUsers);
 
+            System.out.println("Database URL: " + DB_URL);
+            System.out.println("Working directory: " + System.getProperty("user.dir"));
             System.out.println("Database initialized successfully!");
 
         } catch (SQLException e) {

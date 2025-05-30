@@ -9,38 +9,58 @@ import java.util.List;
 public class GameDAO {
 
     public int createGame(Game game) {
-        String sql = ""
-                + "INSERT INTO games "
-                + "  (user_id, score, time_spent, game_state, obstacles, started_at) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO games (user_id, score, time_spent, game_state, obstacles, started_at) VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = DatabaseUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {      // no RETURN_GENERATED_KEYS
+        System.out.println("GameDAO.createGame called");
+        System.out.println("Game user ID: " + game.getUserId());
+        System.out.println("Game obstacles: " + game.getObstacles());
 
-            // --- bind parameters in the correct order ---
-            stmt.setInt(1, game.getUserId());                     // user_id
-            stmt.setInt(2, 0);                                    // score = 0 at start
-            stmt.setLong(3, 0L);                                  // time_spent = 0
-            stmt.setString(4, "{}");                              // empty initial game_state
-            stmt.setString(5, game.getObstacles());               // obstacles JSON
-            stmt.setTimestamp(6, new Timestamp(System.currentTimeMillis())); // started_at
+        try (Connection conn = DatabaseUtil.getConnection()) {
+            System.out.println("Database connection obtained successfully");
 
-            int rows = stmt.executeUpdate();
-            if (rows == 0) {
-                return -1;   // insertion failed
-            }
+            try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                System.out.println("PreparedStatement created");
 
-            // --- now fetch the new game’s ID via last_insert_rowid() ---
-            try (Statement idStmt = conn.createStatement();
-                 ResultSet rs = idStmt.executeQuery("SELECT last_insert_rowid()")) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                } else {
-                    return -1;
+                // Bind parameters in the correct order
+                stmt.setInt(1, game.getUserId());                     // user_id
+                stmt.setInt(2, 0);                                    // score = 0 at start
+                stmt.setLong(3, 0L);                                  // time_spent = 0
+                stmt.setString(4, "{}");                              // empty initial game_state
+                stmt.setString(5, game.getObstacles());               // obstacles JSON
+                stmt.setTimestamp(6, new Timestamp(System.currentTimeMillis())); // started_at
+
+                System.out.println("Parameters bound successfully");
+
+                int rows = stmt.executeUpdate();
+                System.out.println("Rows affected: " + rows);
+
+                if (rows == 0) {
+                    System.out.println("No rows were inserted");
+                    return -1;   // insertion failed
+                }
+
+                // Get the generated key
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int gameId = generatedKeys.getInt(1);
+                        System.out.println("Generated game ID: " + gameId);
+                        return gameId;
+                    } else {
+                        System.out.println("No ID was generated");
+                        return -1;
+                    }
                 }
             }
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.createGame:");
+            System.err.println("Error Code: " + e.getErrorCode());
+            System.err.println("SQL State: " + e.getSQLState());
+            System.err.println("Message: " + e.getMessage());
+            e.printStackTrace();
+            return -1;
+        } catch (Exception e) {
+            System.err.println("Unexpected exception in GameDAO.createGame:");
             e.printStackTrace();
             return -1;
         }
@@ -62,6 +82,7 @@ public class GameDAO {
             return rowsAffected > 0;
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.updateGame:");
             e.printStackTrace();
             return false;
         }
@@ -90,6 +111,7 @@ public class GameDAO {
             }
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.getGameById:");
             e.printStackTrace();
         }
 
@@ -120,6 +142,7 @@ public class GameDAO {
             }
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.getGamesByUserId:");
             e.printStackTrace();
         }
 
@@ -140,6 +163,7 @@ public class GameDAO {
             return rowsAffected > 0;
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.addGameMove:");
             e.printStackTrace();
             return false;
         }
@@ -166,6 +190,7 @@ public class GameDAO {
             }
 
         } catch (SQLException e) {
+            System.err.println("SQLException in GameDAO.getGameMoves:");
             e.printStackTrace();
         }
 

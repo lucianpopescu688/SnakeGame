@@ -23,6 +23,7 @@ public class GameServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         gameDAO = new GameDAO();
+        System.out.println("GameServlet initialized successfully");
     }
 
     @Override
@@ -32,28 +33,52 @@ public class GameServlet extends HttpServlet {
         HttpSession session = request.getSession();
         User user = (User) session.getAttribute("user");
 
+        System.out.println("GameServlet doPost called");
+        System.out.println("User from session: " + (user != null ? user.getUsername() : "null"));
+
         if (user == null) {
+            System.out.println("User is null, redirecting to login");
             response.sendRedirect("login.jsp");
             return;
         }
 
         String action = request.getParameter("action");
+        System.out.println("Action parameter: " + action);
+
         response.setContentType("application/json");
         PrintWriter out = response.getWriter();
 
         if ("startGame".equals(action)) {
-            // Generate random obstacles
-            String obstacles = generateObstacles();
+            System.out.println("Starting new game for user: " + user.getUsername() + " (ID: " + user.getId() + ")");
 
-            Game game = new Game(user.getId(), obstacles);
-            int gameId = gameDAO.createGame(game);
+            try {
+                // Generate random obstacles
+                String obstacles = generateObstacles();
+                System.out.println("Generated obstacles: " + obstacles);
 
-            if (gameId > 0) {
-                session.setAttribute("currentGameId", gameId);
-                session.setAttribute("gameStartTime", System.currentTimeMillis());
-                out.print("{\"success\": true, \"gameId\": " + gameId + ", \"obstacles\": \"" + obstacles + "\"}");
-            } else {
-                out.print("{\"success\": false, \"message\": \"Failed to start game\"}");
+                Game game = new Game(user.getId(), obstacles);
+                System.out.println("Created game object for user ID: " + game.getUserId());
+
+                int gameId = gameDAO.createGame(game);
+                System.out.println("GameDAO.createGame returned ID: " + gameId);
+
+                if (gameId > 0) {
+                    session.setAttribute("currentGameId", gameId);
+                    session.setAttribute("gameStartTime", System.currentTimeMillis());
+
+                    String jsonResponse = "{\"success\": true, \"gameId\": " + gameId + ", \"obstacles\": \"" + obstacles + "\"}";
+                    System.out.println("Sending success response: " + jsonResponse);
+                    out.print(jsonResponse);
+                } else {
+                    String errorResponse = "{\"success\": false, \"message\": \"Failed to create game in database\"}";
+                    System.out.println("Sending error response: " + errorResponse);
+                    out.print(errorResponse);
+                }
+            } catch (Exception e) {
+                System.err.println("Exception in startGame:");
+                e.printStackTrace();
+                String errorResponse = "{\"success\": false, \"message\": \"Exception: " + e.getMessage() + "\"}";
+                out.print(errorResponse);
             }
 
         } else if ("endGame".equals(action)) {
@@ -110,6 +135,9 @@ public class GameServlet extends HttpServlet {
             } else {
                 out.print("{\"success\": false, \"message\": \"No active game\"}");
             }
+        } else {
+            System.out.println("Unknown action: " + action);
+            out.print("{\"success\": false, \"message\": \"Unknown action\"}");
         }
 
         out.flush();
