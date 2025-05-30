@@ -134,3 +134,4 @@ public class GameServlet extends HttpServlet {
         obstacles.append("]");
         return obstacles.toString();
     }
+}
