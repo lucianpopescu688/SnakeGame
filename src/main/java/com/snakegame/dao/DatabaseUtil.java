@@ -42,7 +42,8 @@ public class DatabaseUtil {
                     user_id INTEGER NOT NULL,
                     score INTEGER DEFAULT 0,
                     time_spent INTEGER DEFAULT 0,
-                    game_state TEXT,
+                    game_
+                    state TEXT,
                     obstacles TEXT,
                     started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     ended_at DATETIME,
