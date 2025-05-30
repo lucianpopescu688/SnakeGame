@@ -9,31 +9,41 @@ import java.util.List;
 public class GameDAO {
 
     public int createGame(Game game) {
-        String sql = "INSERT INTO games (user_id, score, time_spent, game_state, obstacles) VALUES (?, ?, ?, ?, ?)";
+        String sql = ""
+                + "INSERT INTO games "
+                + "  (user_id, score, time_spent, game_state, obstacles, started_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {      // no RETURN_GENERATED_KEYS
 
-            stmt.setInt(1, game.getUserId());
-            stmt.setInt(2, game.getScore());
-            stmt.setLong(3, game.getTimeSpent());
-            stmt.setString(4, game.getGameState());
-            stmt.setString(5, game.getObstacles());
+            // --- bind parameters in the correct order ---
+            stmt.setInt(1, game.getUserId());                     // user_id
+            stmt.setInt(2, 0);                                    // score = 0 at start
+            stmt.setLong(3, 0L);                                  // time_spent = 0
+            stmt.setString(4, "{}");                              // empty initial game_state
+            stmt.setString(5, game.getObstacles());               // obstacles JSON
+            stmt.setTimestamp(6, new Timestamp(System.currentTimeMillis())); // started_at
 
-            int rowsAffected = stmt.executeUpdate();
+            int rows = stmt.executeUpdate();
+            if (rows == 0) {
+                return -1;   // insertion failed
+            }
 
-            if (rowsAffected > 0) {
-                ResultSet generatedKeys = stmt.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    return generatedKeys.getInt(1);
+            // --- now fetch the new game’s ID via last_insert_rowid() ---
+            try (Statement idStmt = conn.createStatement();
+                 ResultSet rs = idStmt.executeQuery("SELECT last_insert_rowid()")) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                } else {
+                    return -1;
                 }
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
+            return -1;
         }
-
-        return -1;
     }
 
     public boolean updateGame(Game game) {
