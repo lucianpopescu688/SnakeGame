@@ -1,60 +1,78 @@
 package com.snakegame.servlet;
 
 import com.snakegame.dao.GameDAO;
+import com.snakegame.dao.GameMoveDAO;
+import com.snakegame.model.Game;
 import com.snakegame.model.GameMove;
-import com.snakegame.model.User;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
 import java.io.IOException;
-import java.io.PrintWriter;
 
-@WebServlet("/GameMoveServlet")
+@WebServlet("/gameMove")
 public class GameMoveServlet extends HttpServlet {
-
     private GameDAO gameDAO;
+    private GameMoveDAO gameMoveDAO;
+    private Gson gson;
 
     @Override
     public void init() throws ServletException {
         gameDAO = new GameDAO();
+        gameMoveDAO = new GameMoveDAO();
+        gson = new Gson();
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session = request.getSession();
-        User user = (User) session.getAttribute("user");
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        Integer userId = (Integer) session.getAttribute("userId");
         Integer gameId = (Integer) session.getAttribute("currentGameId");
 
-        if (user == null) {
-            response.sendRedirect("login.jsp");
+        String direction = request.getParameter("direction");
+        String snakePositions = request.getParameter("snakePositions");
+
+        // Validation
+        if (gameId == null || direction == null || snakePositions == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
-        if (gameId == null) {
-            response.setContentType("application/json");
-            PrintWriter out = response.getWriter();
-            out.print("{\"success\": false, \"message\": \"No active game\"}");
-            out.flush();
+        // Verify game belongs to user and is active
+        Game game = gameDAO.findById(gameId);
+        if (game == null || game.getUserId() != userId || !game.isActive()) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
 
-        String moveDirection = request.getParameter("direction");
-        String snakePosition = request.getParameter("snakePosition");
+        // Get next move number
+        int moveCount = gameMoveDAO.getMoveCountByGameId(gameId);
+        int nextMoveNumber = moveCount + 1;
 
-        if (moveDirection != null && snakePosition != null) {
-            GameMove move = new GameMove(gameId, moveDirection, snakePosition);
-            boolean saved = gameDAO.addGameMove(move);
+        // Create and save the move
+        GameMove gameMove = new GameMove(gameId, nextMoveNumber, direction, snakePositions);
 
-            response.setContentType("application/json");
-            PrintWriter out = response.getWriter();
-            out.print("{\"success\": " + saved + "}");
-            out.flush();
+        boolean success = gameMoveDAO.createGameMove(gameMove);
+
+        response.setContentType("application/json");
+        JsonObject result = new JsonObject();
+        result.addProperty("success", success);
+
+        if (success) {
+            result.addProperty("moveNumber", nextMoveNumber);
+        } else {
+            result.addProperty("error", "Failed to save move");
         }
+
+        response.getWriter().write(result.toString());
     }
 }

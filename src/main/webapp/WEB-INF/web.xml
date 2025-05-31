@@ -18,9 +18,25 @@
         <filter-class>com.snakegame.filter.AuthenticationFilter</filter-class>
     </filter>
 
+    <!-- Apply filter to protected resources only -->
     <filter-mapping>
         <filter-name>AuthenticationFilter</filter-name>
-        <url-pattern>/*</url-pattern>
+        <url-pattern>/game</url-pattern>
+    </filter-mapping>
+
+    <filter-mapping>
+        <filter-name>AuthenticationFilter</filter-name>
+        <url-pattern>/gameMove</url-pattern>
+    </filter-mapping>
+
+    <filter-mapping>
+        <filter-name>AuthenticationFilter</filter-name>
+        <url-pattern>/game.jsp</url-pattern>
+    </filter-mapping>
+
+    <filter-mapping>
+        <filter-name>AuthenticationFilter</filter-name>
+        <url-pattern>/game-history.jsp</url-pattern>
     </filter-mapping>
 
     <!-- Session configuration -->

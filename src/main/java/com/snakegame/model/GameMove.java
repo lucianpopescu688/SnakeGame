@@ -1,23 +1,37 @@
 package com.snakegame.model;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 public class GameMove {
     private int id;
     private int gameId;
-    private String moveDirection;
-    private String snakePosition; // JSON representation
-    private Timestamp timestamp;
+    private int moveNumber;
+    private String direction;
+    private String snakePositions; // JSON string representing snake positions
+    private LocalDateTime timestamp;
 
+    // Constructors
     public GameMove() {}
 
-    public GameMove(int gameId, String moveDirection, String snakePosition) {
+    public GameMove(int gameId, int moveNumber, String direction, String snakePositions) {
         this.gameId = gameId;
-        this.moveDirection = moveDirection;
-        this.snakePosition = snakePosition;
+        this.moveNumber = moveNumber;
+        this.direction = direction;
+        this.snakePositions = snakePositions;
+        this.timestamp = LocalDateTime.now();
     }
 
-    // Getters and setters
+    public GameMove(int id, int gameId, int moveNumber, String direction,
+                    String snakePositions, LocalDateTime timestamp) {
+        this.id = id;
+        this.gameId = gameId;
+        this.moveNumber = moveNumber;
+        this.direction = direction;
+        this.snakePositions = snakePositions;
+        this.timestamp = timestamp;
+    }
+
+    // Getters and Setters
     public int getId() {
         return id;
     }
@@ -34,27 +48,46 @@ public class GameMove {
         this.gameId = gameId;
     }
 
-    public String getMoveDirection() {
-        return moveDirection;
+    public int getMoveNumber() {
+        return moveNumber;
     }
 
-    public void setMoveDirection(String moveDirection) {
-        this.moveDirection = moveDirection;
+    public void setMoveNumber(int moveNumber) {
+        this.moveNumber = moveNumber;
     }
 
-    public String getSnakePosition() {
-        return snakePosition;
+    public String getDirection() {
+        return direction;
     }
 
-    public void setSnakePosition(String snakePosition) {
-        this.snakePosition = snakePosition;
+    public void setDirection(String direction) {
+        this.direction = direction;
     }
 
-    public Timestamp getTimestamp() {
+    public String getSnakePositions() {
+        return snakePositions;
+    }
+
+    public void setSnakePositions(String snakePositions) {
+        this.snakePositions = snakePositions;
+    }
+
+    public LocalDateTime getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Timestamp timestamp) {
+    public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    @Override
+    public String toString() {
+        return "GameMove{" +
+                "id=" + id +
+                ", gameId=" + gameId +
+                ", moveNumber=" + moveNumber +
+                ", direction='" + direction + '\'' +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }

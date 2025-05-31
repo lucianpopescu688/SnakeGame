@@ -1,27 +1,39 @@
 package com.snakegame.model;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 public class Game {
     private int id;
     private int userId;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
     private int score;
-    private long timeSpent; // in seconds
-    private String gameState; // JSON representation of snake position, food, etc.
-    private String obstacles; // JSON representation of obstacle positions
-    private Timestamp startedAt;
-    private Timestamp endedAt;
+    private boolean isActive;
+    private long totalTimeSeconds;
 
+    // Constructors
     public Game() {}
 
-    public Game(int userId, String obstacles) {
+    public Game(int userId) {
         this.userId = userId;
-        this.obstacles = obstacles;
+        this.startTime = LocalDateTime.now();
         this.score = 0;
-        this.timeSpent = 0;
+        this.isActive = true;
+        this.totalTimeSeconds = 0;
     }
 
-    // Getters and setters
+    public Game(int id, int userId, LocalDateTime startTime, LocalDateTime endTime,
+                int score, boolean isActive, long totalTimeSeconds) {
+        this.id = id;
+        this.userId = userId;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.score = score;
+        this.isActive = isActive;
+        this.totalTimeSeconds = totalTimeSeconds;
+    }
+
+    // Getters and Setters
     public int getId() {
         return id;
     }
@@ -38,6 +50,22 @@ public class Game {
         this.userId = userId;
     }
 
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
     public int getScore() {
         return score;
     }
@@ -46,43 +74,32 @@ public class Game {
         this.score = score;
     }
 
-    public long getTimeSpent() {
-        return timeSpent;
+    public boolean isActive() {
+        return isActive;
     }
 
-    public void setTimeSpent(long timeSpent) {
-        this.timeSpent = timeSpent;
+    public void setActive(boolean active) {
+        isActive = active;
     }
 
-    public String getGameState() {
-        return gameState;
+    public long getTotalTimeSeconds() {
+        return totalTimeSeconds;
     }
 
-    public void setGameState(String gameState) {
-        this.gameState = gameState;
+    public void setTotalTimeSeconds(long totalTimeSeconds) {
+        this.totalTimeSeconds = totalTimeSeconds;
     }
 
-    public String getObstacles() {
-        return obstacles;
-    }
-
-    public void setObstacles(String obstacles) {
-        this.obstacles = obstacles;
-    }
-
-    public Timestamp getStartedAt() {
-        return startedAt;
-    }
-
-    public void setStartedAt(Timestamp startedAt) {
-        this.startedAt = startedAt;
-    }
-
-    public Timestamp getEndedAt() {
-        return endedAt;
-    }
-
-    public void setEndedAt(Timestamp endedAt) {
-        this.endedAt = endedAt;
+    @Override
+    public String toString() {
+        return "Game{" +
+                "id=" + id +
+                ", userId=" + userId +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", score=" + score +
+                ", isActive=" + isActive +
+                ", totalTimeSeconds=" + totalTimeSeconds +
+                '}';
     }
 }

@@ -1,20 +1,18 @@
 package com.snakegame.servlet;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
 import java.io.IOException;
 
-@WebServlet("/LogoutServlet")
+@WebServlet("/logout")
 public class LogoutServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        // Get the current session if it exists
         HttpSession session = request.getSession(false);
 
         if (session != null) {
@@ -22,8 +20,8 @@ public class LogoutServlet extends HttpServlet {
             session.invalidate();
         }
 
-        // Redirect to login page with logout message
-        response.sendRedirect("login.jsp?logout=true");
+        // Redirect to login page
+        response.sendRedirect(request.getContextPath() + "/login");
     }
 
     @Override

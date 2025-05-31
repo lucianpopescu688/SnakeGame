@@ -1,165 +1,189 @@
 package com.snakegame.servlet;
 
 import com.snakegame.dao.GameDAO;
+import com.snakegame.dao.GameMoveDAO;
 import com.snakegame.model.Game;
-import com.snakegame.model.User;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.sql.Timestamp;
-import java.util.Random;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
-@WebServlet("/GameServlet")
+@WebServlet("/game")
 public class GameServlet extends HttpServlet {
-
     private GameDAO gameDAO;
+    private GameMoveDAO gameMoveDAO;
+    private Gson gson;
 
     @Override
     public void init() throws ServletException {
         gameDAO = new GameDAO();
-        System.out.println("GameServlet initialized successfully");
+        gameMoveDAO = new GameMoveDAO();
+        gson = new Gson();
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
+        Integer userId = (Integer) session.getAttribute("userId");
+        String action = request.getParameter("action");
+
+        if ("newGame".equals(action)) {
+            // End any active game first
+            Game activeGame = gameDAO.findActiveGameByUserId(userId);
+            if (activeGame != null) {
+                activeGame.setActive(false);
+                activeGame.setEndTime(LocalDateTime.now());
+
+                // Calculate total time
+                long totalTime = ChronoUnit.SECONDS.between(activeGame.getStartTime(), activeGame.getEndTime());
+                activeGame.setTotalTimeSeconds(totalTime);
+
+                gameDAO.updateGame(activeGame);
+            }
+
+            // Create new game
+            Game newGame = new Game(userId);
+            int gameId = gameDAO.createGame(newGame);
+
+            if (gameId > 0) {
+                session.setAttribute("currentGameId", gameId);
+                response.sendRedirect(request.getContextPath() + "/game");
+            } else {
+                request.setAttribute("error", "Failed to create new game");
+                request.getRequestDispatcher("/game.jsp").forward(request, response);
+            }
+            return;
+        }
+
+        if ("endGame".equals(action)) {
+            Integer gameId = (Integer) session.getAttribute("currentGameId");
+            if (gameId != null) {
+                Game game = gameDAO.findById(gameId);
+                if (game != null && game.isActive()) {
+                    game.setActive(false);
+                    game.setEndTime(LocalDateTime.now());
+
+                    // Calculate total time
+                    long totalTime = ChronoUnit.SECONDS.between(game.getStartTime(), game.getEndTime());
+                    game.setTotalTimeSeconds(totalTime);
+
+                    gameDAO.updateGame(game);
+                    session.removeAttribute("currentGameId");
+                }
+            }
+            response.sendRedirect(request.getContextPath() + "/game");
+            return;
+        }
+
+        if ("history".equals(action)) {
+            List<Game> userGames = gameDAO.getGamesByUserId(userId);
+            request.setAttribute("games", userGames);
+            request.getRequestDispatcher("/game-history.jsp").forward(request, response);
+            return;
+        }
+
+        if ("obstacles".equals(action)) {
+            // Return obstacles as JSON
+            List<int[]> obstacles = gameMoveDAO.getObstacles();
+            JsonArray obstaclesJson = new JsonArray();
+
+            for (int[] obstacle : obstacles) {
+                JsonObject obstacleObj = new JsonObject();
+                obstacleObj.addProperty("x", obstacle[0]);
+                obstacleObj.addProperty("y", obstacle[1]);
+                obstaclesJson.add(obstacleObj);
+            }
+
+            response.setContentType("application/json");
+            response.getWriter().write(obstaclesJson.toString());
+            return;
+        }
+
+        // Default: show game page
+        Game currentGame = null;
+        Integer currentGameId = (Integer) session.getAttribute("currentGameId");
+
+        if (currentGameId != null) {
+            currentGame = gameDAO.findById(currentGameId);
+            if (currentGame == null || !currentGame.isActive()) {
+                session.removeAttribute("currentGameId");
+                currentGame = null;
+            }
+        }
+
+        // If no active game, find the most recent active game
+        if (currentGame == null) {
+            currentGame = gameDAO.findActiveGameByUserId(userId);
+            if (currentGame != null) {
+                session.setAttribute("currentGameId", currentGame.getId());
+            }
+        }
+
+        request.setAttribute("currentGame", currentGame);
+        request.getRequestDispatcher("/game.jsp").forward(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session = request.getSession();
-        User user = (User) session.getAttribute("user");
-
-        System.out.println("GameServlet doPost called");
-        System.out.println("User from session: " + (user != null ? user.getUsername() : "null"));
-
-        if (user == null) {
-            System.out.println("User is null, redirecting to login");
-            response.sendRedirect("login.jsp");
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
+        Integer userId = (Integer) session.getAttribute("userId");
         String action = request.getParameter("action");
-        System.out.println("Action parameter: " + action);
 
-        response.setContentType("application/json");
-        PrintWriter out = response.getWriter();
-
-        if ("startGame".equals(action)) {
-            System.out.println("Starting new game for user: " + user.getUsername() + " (ID: " + user.getId() + ")");
-
-            try {
-                // Generate random obstacles
-                String obstacles = generateObstacles();
-                System.out.println("Generated obstacles: " + obstacles);
-
-                Game game = new Game(user.getId(), obstacles);
-                System.out.println("Created game object for user ID: " + game.getUserId());
-
-                int gameId = gameDAO.createGame(game);
-                System.out.println("GameDAO.createGame returned ID: " + gameId);
-
-                if (gameId > 0) {
-                    session.setAttribute("currentGameId", gameId);
-                    session.setAttribute("gameStartTime", System.currentTimeMillis());
-
-                    String jsonResponse = "{\"success\": true, \"gameId\": " + gameId + ", \"obstacles\": \"" + obstacles + "\"}";
-                    System.out.println("Sending success response: " + jsonResponse);
-                    out.print(jsonResponse);
-                } else {
-                    String errorResponse = "{\"success\": false, \"message\": \"Failed to create game in database\"}";
-                    System.out.println("Sending error response: " + errorResponse);
-                    out.print(errorResponse);
-                }
-            } catch (Exception e) {
-                System.err.println("Exception in startGame:");
-                e.printStackTrace();
-                String errorResponse = "{\"success\": false, \"message\": \"Exception: " + e.getMessage() + "\"}";
-                out.print(errorResponse);
-            }
-
-        } else if ("endGame".equals(action)) {
+        if ("updateScore".equals(action)) {
             Integer gameId = (Integer) session.getAttribute("currentGameId");
-            Long startTime = (Long) session.getAttribute("gameStartTime");
+            String scoreStr = request.getParameter("score");
 
-            if (gameId != null && startTime != null) {
-                int score = Integer.parseInt(request.getParameter("score"));
-                String gameState = request.getParameter("gameState");
+            if (gameId != null && scoreStr != null) {
+                try {
+                    int score = Integer.parseInt(scoreStr);
+                    Game game = gameDAO.findById(gameId);
 
-                long timeSpent = (System.currentTimeMillis() - startTime) / 1000; // Convert to seconds
+                    if (game != null && game.isActive() && game.getUserId() == userId) {
+                        game.setScore(score);
 
-                Game game = gameDAO.getGameById(gameId);
-                if (game != null) {
-                    game.setScore(score);
-                    game.setTimeSpent(timeSpent);
-                    game.setGameState(gameState);
-                    game.setEndedAt(new Timestamp(System.currentTimeMillis()));
+                        // Update total time
+                        long totalTime = ChronoUnit.SECONDS.between(game.getStartTime(), LocalDateTime.now());
+                        game.setTotalTimeSeconds(totalTime);
 
-                    boolean updated = gameDAO.updateGame(game);
-                    if (updated) {
-                        out.print("{\"success\": true, \"timeSpent\": " + timeSpent + "}");
-                    } else {
-                        out.print("{\"success\": false, \"message\": \"Failed to save game\"}");
+                        gameDAO.updateGame(game);
+
+                        response.setContentType("application/json");
+                        JsonObject result = new JsonObject();
+                        result.addProperty("success", true);
+                        response.getWriter().write(result.toString());
+                        return;
                     }
-                } else {
-                    out.print("{\"success\": false, \"message\": \"Game not found\"}");
+                } catch (NumberFormatException e) {
+                    // Invalid score format
                 }
-
-                // Clear session data
-                session.removeAttribute("currentGameId");
-                session.removeAttribute("gameStartTime");
-            } else {
-                out.print("{\"success\": false, \"message\": \"No active game found\"}");
             }
 
-        } else if ("updateGame".equals(action)) {
-            Integer gameId = (Integer) session.getAttribute("currentGameId");
-
-            if (gameId != null) {
-                int score = Integer.parseInt(request.getParameter("score"));
-                String gameState = request.getParameter("gameState");
-
-                Game game = gameDAO.getGameById(gameId);
-                if (game != null) {
-                    game.setScore(score);
-                    game.setGameState(gameState);
-
-                    boolean updated = gameDAO.updateGame(game);
-                    out.print("{\"success\": " + updated + "}");
-                } else {
-                    out.print("{\"success\": false, \"message\": \"Game not found\"}");
-                }
-            } else {
-                out.print("{\"success\": false, \"message\": \"No active game\"}");
-            }
-        } else {
-            System.out.println("Unknown action: " + action);
-            out.print("{\"success\": false, \"message\": \"Unknown action\"}");
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            JsonObject error = new JsonObject();
+            error.addProperty("success", false);
+            error.addProperty("error", "Invalid request");
+            response.getWriter().write(error.toString());
         }
-
-        out.flush();
-    }
-
-    private String generateObstacles() {
-        Random random = new Random();
-        StringBuilder obstacles = new StringBuilder("[");
-
-        // Generate 8-12 random obstacles on a 20x20 grid
-        int numObstacles = 8 + random.nextInt(5);
-
-        for (int i = 0; i < numObstacles; i++) {
-            if (i > 0) obstacles.append(",");
-
-            int x = 2 + random.nextInt(16); // Avoid edges
-            int y = 2 + random.nextInt(16);
-
-            obstacles.append("{\"x\":").append(x).append(",\"y\":").append(y).append("}");
-        }
-
-        obstacles.append("]");
-        return obstacles.toString();
     }
 }

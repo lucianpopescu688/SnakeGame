@@ -1,9 +1,9 @@
 package com.snakegame.filter;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 public class AuthenticationFilter implements Filter {
@@ -19,20 +19,9 @@ public class AuthenticationFilter implements Filter {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
+
         HttpSession session = httpRequest.getSession(false);
 
-        String requestURI = httpRequest.getRequestURI();
-
-        // Allow access to login page and login servlet
-        if (requestURI.endsWith("login.jsp") ||
-                requestURI.endsWith("LoginServlet") ||
-                requestURI.contains("/css/") ||
-                requestURI.contains("/js/")) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // Check if user is logged in
         boolean isLoggedIn = (session != null && session.getAttribute("user") != null);
 
         if (isLoggedIn) {
